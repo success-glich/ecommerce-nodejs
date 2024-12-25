@@ -1,4 +1,5 @@
-import { Consumer, Kafka, logLevel, Producer } from "kafkajs";
+import { TopicType, OrderEvent, MessageType } from './../../types/subscription.types';
+import { Consumer, Kafka, logLevel, Partitioners, Producer } from "kafkajs";
 import { MessageBrokerType, MessageHandler, PublishType } from "./broker.type"; 
 
 
@@ -16,25 +17,139 @@ const kafka= new Kafka({
 let producer:Producer;
 let consumer:Consumer;
 
+const createTopic = async (topic:string[])=>{
 
+    const topics = topic.map(t=>({
+        topic:t,
+        numPartitions:2,
+        replicationFactor:1 //* based on available brokers
+    }))
+    const admin= kafka.admin()
+    await admin.connect()
+    const topicExists = await admin.listTopics();
+    console.log('topicExists',topicExists)
 
-export const MessageBroker:MessageBrokerType  ={
-    connectProducer: function <T>(): Promise<T> {
-        throw new Error("Function not implemented.");
-    },
-    disconnectProducer: function (): Promise<void> {
-        throw new Error("Function not implemented.");
-    },
-    publish: function (data: PublishType): Promise<boolean> {
-        throw new Error("Function not implemented.");
-    },
-    connectConsumer: function <T>(): Promise<T> {
-        throw new Error("Function not implemented.");
-    },
-    disconnectConsumer: function <T>(): Promise<void> {
-        throw new Error("Function not implemented.");
-    },
-    subscribe: function (messageHandler: MessageHandler, topic: string): Promise<void> {
-        throw new Error("Function not implemented.");
-    }
+    for (const t of topics) {
+    if(!topicExists.includes(t.topic)){
+        await admin.createTopics({
+            topics:[t]
+        })  
+    }}
+    await admin.disconnect()
 }
+
+//* Producer workflow
+const connectProducer = async <T>():Promise<T>=>{
+    await createTopic(["OrderEvents"])
+
+    if(producer){
+        return producer as unknown as T
+    }
+    producer = kafka.producer({
+        createPartitioner: Partitioners.DefaultPartitioner,
+    })
+
+    await producer.connect()
+    console.log('producer connected with a new connection')
+
+    return producer as unknown as T;
+    
+}
+
+const disconnectProducer = async ():Promise<void>=>{
+    if(producer){
+        await producer.disconnect()
+    }
+
+}
+const publish = async (data:PublishType):Promise<boolean>=>{
+    const producer = await connectProducer<Producer>()
+    const result = await producer.send({
+        topic:data.topic,
+        messages:[{
+            headers:data.headers,
+            key:data.event,
+            value:JSON.stringify(data.message)
+        }]
+    })
+    console.log('publishing the result',result)
+
+    return true;
+}
+
+//* Consumer workflow
+const connectConsumer = async <T>():Promise<T>=>{
+    if(consumer){
+        return consumer as unknown as T
+    }
+    consumer = kafka.consumer({
+        groupId:GROUP_ID
+    })
+    await consumer.connect()
+    return consumer as unknown as T;
+}
+
+const disconnectConsumer = async ():Promise<void>=>{
+    if(consumer){
+        await consumer.disconnect()
+    }
+
+}
+
+const subscribe = async (messageHandler:MessageHandler,topic:TopicType):Promise<void>=>{
+    const consumer = await connectConsumer<Consumer>()
+    await consumer.subscribe({
+        topic,
+        fromBeginning:true
+    });
+    await consumer.run({
+        eachMessage: async ({topic,partition,message})=>{
+            if(topic!=='OrderEvents') return;
+           
+            if(message.key && message.value){
+                const inputMessage:MessageType = {
+                    headers:message?.headers!,
+                    event:message.key.toString() as OrderEvent,
+                    payload:message.value ?JSON.parse(message.value.toString()):null
+
+                }
+                await messageHandler(inputMessage)
+                await consumer.commitOffsets([
+                    {topic,partition,offset:(Number(message.offset)+1).toString()}
+                ])
+            }
+        }
+    })
+ 
+}
+
+
+export const MessageBroker:MessageBrokerType={
+        connectConsumer,
+        disconnectConsumer,
+        subscribe,
+        publish,
+        connectProducer,
+        disconnectProducer,
+
+}
+// export const MessageBroker:MessageBrokerType  ={
+//     connectProducer: function <T>(): Promise<T> {
+//         throw new Error("Function not implemented.");
+//     },
+//     disconnectProducer: function (): Promise<void> {
+//         throw new Error("Function not implemented.");
+//     },
+//     publish: function (data: PublishType): Promise<boolean> {
+//         throw new Error("Function not implemented.");
+//     },
+//     connectConsumer: function <T>(): Promise<T> {
+//         throw new Error("Function not implemented.");
+//     },
+//     disconnectConsumer: function <T>(): Promise<void> {
+//         throw new Error("Function not implemented.");
+//     },
+//     subscribe: function (messageHandler: MessageHandler, topic: string): Promise<void> {
+//         throw new Error("Function not implemented.");
+//     }
+// }

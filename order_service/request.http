@@ -1,0 +1,11 @@
+GET http:localhost:9000/order
+Content-Type: application/json
+###
+POST http:localhost:9000/cart
+Content-Type: application/json
+
+{
+    "user_id": "1"
+}
+
+###

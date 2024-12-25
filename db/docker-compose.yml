@@ -1,0 +1,33 @@
+version: "3"
+
+services:
+  catalog_db_server:
+  
+    image: postgres
+    ports:
+      - "5439:5432"
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      - POSTGRES_USER=catalog_db
+      - POSTGRES_PASSWORD=catalog_db_password
+      - POSTGRES_DB=catalog_service
+    volumes:
+      - ./db-data/catalog_db_server:/var/lib/postgresql/data
+
+  order_db_server:
+    image: postgres
+    ports:
+      - "5438:5432"
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      - POSTGRES_USER=order_db
+      - POSTGRES_PASSWORD=order_db_password
+      - POSTGRES_DB=order_service
+    volumes:
+      - ./db-data/order_db_server:/var/lib/postgresql/data
+    
+      

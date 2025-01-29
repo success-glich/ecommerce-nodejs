@@ -1,11 +1,17 @@
 import * as express from 'express';
+import { RequestAuthorizer } from './middleware';
 
 const router = express.Router()
 
 
-router.post('/order',async (req:express.Request,res:express.Response)=>{
+router.post('/order',RequestAuthorizer,async (req:express.Request,res:express.Response,next:express.NextFunction)=>{
+    const user = req.user;
+    if(!user){
+        next(new Error("User not found"));
+        return;
+    }
 
-
+    // const response = await OrderService.CreateOrder(user);
     res.status(200).json({
         message:"Create order"
     })

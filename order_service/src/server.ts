@@ -1,10 +1,13 @@
 
-import app from "./express-app";
+import  { ExpressApp } from "./express-app";
 
-const PORT = process.env.PORT ?? 9000
+const PORT = process.env.PORT ?? 9002
 
 export const StartServer = async()=>{
-    app.listen(PORT,()=>console.log(`Server started on port ${PORT}`));
+
+    const expressApp = await ExpressApp()
+    
+    expressApp.listen(PORT,()=>console.log(`Server started on port ${PORT}`));
     process.on('uncaughtException', function (err) {
         console.log(err);
         process.exit(1);

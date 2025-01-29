@@ -8,6 +8,7 @@ export interface PublishType{
 }
 
 export type MessageHandler=(input:MessageType)=>void;
+
 export type MessageBrokerType={
     // * producer
     connectProducer:<T>()=>Promise<T>; 

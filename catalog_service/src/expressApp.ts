@@ -1,4 +1,4 @@
-import  { Application } from 'express';
+import { Application } from 'express';
 import * as express from "express";
 // import cors from 'cors';
 // import morgan from 'morgan';
@@ -22,10 +22,9 @@ export class ExpressApp {
     }
 
     private setupRoutes(): void {
-        // this.app.use('/api/catalog', catalogRouter);
+
         this.app.use('/api', catalogRouter)
-        // Health check endpoint
-        this.app.get('/health', (req, res) => {
+        this.app.get('/health-check', (_, res) => {
             res.status(200).json({ status: 'OK' });
         });
     }

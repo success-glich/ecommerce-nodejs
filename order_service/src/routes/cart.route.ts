@@ -1,60 +1,115 @@
-import * as express from 'express';
-import * as service from '../service/cart.service';
-import * as repository from '../repository/cart.repo';
+import express, { NextFunction, Request, Response } from "express";
+import * as service from "../service/cart.service";
+import * as repository from "../repository/cart.repo";
+import { ValidateRequest } from "../utils/validator";
+import { CartRequestInput, CartRequestSchema } from "../dto/cartRequest.dto";
+import { RequestAuthorizer } from "./middleware";
 
-const router = express.Router()
+const router = express.Router();
 const repo = repository.CartRepository;
 
-router.post('/cart',async (req:express.Request,res:express.Response)=>{
-    console.log(req.body)
-    const response =await service.CreateCart(req.body,repo);
- res.status(201).json({
-    success:true,
-    message:"Cart created successfully!",
-    data:response
- })
-});
+router.post(
+  "/cart",
+  RequestAuthorizer,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        next(new Error("User not found"));
+        return;
+      }
 
-router.get('/cart',async (req:express.Request,res:express.Response)=>{
+      const error = ValidateRequest<CartRequestInput>(
+        req.body,
+        CartRequestSchema
+      );
 
+      if (error) {
+        return res.status(404).json({ error });
+      }
 
-    const response =await service.GetCart(req.body,repo);
- res.status(200).json(response)
-});
-router.get('/cart/:id',async (req:express.Request,res:express.Response)=>{
+      const input: CartRequestInput = req.body;
 
-    const response =await service.GetCart(Number(req.params.id),repo);
-    res.status(200).json(response)
-});
-router.delete('/cart/:id',async (req:express.Request,res:express.Response)=>{
+      const response = await service.CreateCart(
+        {
+          ...input,
+          userId: user.userId,
+        },
+        repo
+      );
+      return res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
+router.get(
+  "/cart",
+  RequestAuthorizer,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        next(new Error("User not found"));
+        return;
+      }
+      const response = await service.GetCart(user.userId, repo);
+      return res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
-    const response =await service.DeleteCart(Number(req.params.id),repo);
- res.status(200).json(response)
-});
-router.delete('/cart',async (req:express.Request,res:express.Response)=>{
+router.patch(
+  "/cart/:lineItemId",
+  RequestAuthorizer,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        next(new Error("User not found"));
+        return;
+      }
 
+      const liteItemId = req.params.lineItemId;
+      const response = await service.EditCart(
+        {
+          id: +liteItemId,
+          qty: req.body.qty,
+          customerId: user.userId,
+        },
+        repo
+      );
+      return res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
-    res.status(200).json({
-        message:"Delete cart"
-    })
-});
-router.delete('/cart',async (req:express.Request,res:express.Response)=>{
-
-
-    res.status(200).json({
-        message:"Delete cart"
-    })
-});
-
-
-
-router.patch('/cart',async (req:express.Request,res:express.Response)=>{
-
-
-    res.status(200).json({
-        message:"Create cart"
-    })
-});
+router.delete(
+  "/cart/:lineItemId",
+  RequestAuthorizer,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        next(new Error("User not found"));
+        return;
+      }
+      const liteItemId = req.params.lineItemId;
+      console.log(liteItemId);
+    //   const response = await service.DeleteCart(
+    //     { customerId: user.userId, id: +liteItemId },
+    //     repo
+    //   );
+    //   return res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router;

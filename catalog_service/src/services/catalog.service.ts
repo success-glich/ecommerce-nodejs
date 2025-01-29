@@ -1,48 +1,56 @@
-import { ICatalogRepository } from "../interface/catalogRepositoryInterface";
+import { ICatalogRepository } from "src/interface/catalogRepositoryInterface";
 
-export  class CatalogService{
+export class CatalogService {
+  private _repository: ICatalogRepository;
 
-    private _repository:ICatalogRepository;
-    
-    constructor(repository:ICatalogRepository){
-        this._repository = repository;
-    }
-
-
-  async createProduct(input:any){
-
-    const data =await this._repository.create(input);
-    if(!data.id){
-        throw new Error("Unable to create product");
+  constructor(repository: ICatalogRepository) {
+    this._repository = repository;
+  }
+  
+  async createProduct(input: any) {
+    const data = await this._repository.create(input);
+    if (!data.id) {
+      throw new Error("unable to create product");
     }
     return data;
+  }
 
+  async updateProduct(input: any) {
+    const data = await this._repository.update(input);
+    if (!data.id) {
+      throw new Error("unable to update product");
     }
-    async updateProduct(input:any){
+    // emit event to update record in Elastic search
+    return data;
+  }
 
-        const data =await this._repository.update(input.id,input);
-        // emit event  to update record in Elastic Search
+  // instead of this we will get product from Elastic search
+  async getProducts(limit: number, offset: number) {
+    const products = await this._repository.find(limit, offset);
 
-        return data;
-        
-    }
+    return products;
+  }
 
-    // instead of this we will get products from elastic search
-    async getProducts(limit:number,offset:number){
-        console.log('limit',limit)
-        console.log('offset',offset)
+  async getProduct(id: number) {
+    const product = await this._repository.findOne(id);
+    return product;
+  }
 
-        const data = await this._repository.findAll(limit,offset);
-        return data;
+  async deleteProduct(id: number) {
+    const response = await this._repository.delete(id);
+    // delete record from Elastic search
+    return response;
+  }
+
+  async getProductStock(ids: number[]) {
+    const products = await this._repository.findStock(ids);
+    if (!products) {
+      throw new Error("unable to find product stock details");
     }
-    async getProduct(id:number){
-        console.log('id',id)
-        const data = await this._repository.find(id);
-        return data;
-    }
-    async deleteProduct(id:number){
-        //* delete product from elastic search
-        const data = await this._repository.delete(id);
-        return data;
-    }
-} 
+    return products;
+  }
+  async handleBrokerMessage(data: any) {
+    console.log('receive broker data::',data)
+ 
+  }
+}
